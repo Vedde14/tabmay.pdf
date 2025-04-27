@@ -1,0 +1,66 @@
+test_pca_eigen <- function() {
+  # Test with USArrests dataset as suggested
+  data(USArrests)
+  
+  cat("Testing PCA implementation on USArrests dataset\n")
+  cat("------------------------------------------------\n")
+  
+  # Run our implementation
+  pca_custom <- pca_eigen(USArrests)
+  
+  # Run built-in implementation for comparison
+  pca_builtin <- princomp(USArrests, cor = TRUE)
+  
+  # Note: Signs may be flipped between the two implementations
+  # This is legitimate as eigenvectors can be multiplied by -1
+  # and still remain eigenvectors
+  
+  # Compare standard deviations
+  cat("\nStandard Deviations:\n")
+  sd_comparison <- data.frame(
+    Custom = pca_custom$sdev,
+    Builtin = pca_builtin$sdev,
+    Difference = abs(pca_custom$sdev - pca_builtin$sdev)
+  )
+  print(sd_comparison)
+  
+  # Compare proportion of variance explained
+  cat("\nProportion of Variance Explained:\n")
+  var_custom <- pca_custom$sdev^2 / sum(pca_custom$sdev^2)
+  var_builtin <- pca_builtin$sdev^2 / sum(pca_builtin$sdev^2)
+  var_comparison <- data.frame(
+    Custom = var_custom,
+    Builtin = var_builtin,
+    Difference = abs(var_custom - var_builtin)
+  )
+  print(var_comparison)
+  
+  # Synthetic test with 2 variables
+  cat("\n\nSynthetic Test: X2 = 2*X1 + 3 + noise\n")
+  set.seed(42)  # For reproducibility
+  n <- 100
+  X1 <- rnorm(n)
+  noise <- rnorm(n, 0, 0.3)
+  X2 <- 2*X1 + 3 + noise
+  synthetic_data <- cbind(X1, X2)
+  
+  pca_synthetic <- pca_eigen(synthetic_data)
+  
+  cat("\nLoadings for synthetic data:\n")
+  print(pca_synthetic$loadings)
+  
+  cat("\nVariance explained by components:\n")
+  var_explained <- pca_synthetic$sdev^2 / sum(pca_synthetic$sdev^2)
+  print(var_explained)
+  
+  # First PC should explain most of the variance
+  cat("\nFirst PC should explain most variance (", 
+      round(var_explained[1]*100, 2), "% explained)\n", sep="")
+  
+  # Visualize synthetic data results
+  cat("\nOne can visualize the results with a simple biplot:\n")
+  cat("biplot(pca_synthetic$scores, pca_synthetic$loadings,\n")
+  cat("       xlab='PC1', ylab='PC2', main='PCA of Synthetic Data')\n")
+  
+  return(pca_custom)
+}
