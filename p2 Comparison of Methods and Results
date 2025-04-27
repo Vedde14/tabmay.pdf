@@ -1,0 +1,36 @@
+compare_methods <- function() {
+  # Load USArrests dataset
+  data(USArrests)
+  
+  # Run both PCA implementations
+  pca_eigen_result <- pca_eigen(USArrests)
+  pca_svd_result <- pca_svd(USArrests)
+  
+  cat("Comparison of Eigendecomposition vs. SVD for PCA\n")
+  cat("-------------------------------------------------\n")
+  
+  # Compare standard deviations
+  cat("\nStandard Deviations Comparison:\n")
+  sd_comparison <- data.frame(
+    Eigen = pca_eigen_result$sdev,
+    SVD = pca_svd_result$sdev,
+    Difference = abs(pca_eigen_result$sdev - pca_svd_result$sdev)
+  )
+  print(sd_comparison)
+  
+  # Compare loadings (noting possible sign differences)
+  cat("\nLoadings (first 2 PCs) from Eigendecomposition:\n")
+  print(round(pca_eigen_result$loadings[, 1:2], 4))
+  
+  cat("\nLoadings (first 2 PCs) from SVD:\n")
+  print(round(pca_svd_result$loadings[, 1:2], 4))
+  
+  # Note: The signs of loadings may differ between methods
+  # but the subspaces defined are the same
+  
+  cat("\nCheck correlation of absolute scores between methods:\n")
+  score_cor <- cor(abs(pca_eigen_result$scores), abs(pca_svd_result$scores))
+  print(diag(score_cor))  # Should be close to 1
+  
+  return(list(eigen = pca_eigen_result, svd = pca_svd_result))
+}
