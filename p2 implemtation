@@ -1,0 +1,94 @@
+pca_svd <- function(X) {
+  # Input validation
+  if (!is.matrix(X) && !is.data.frame(X)) {
+    stop("Error: Input X must be a matrix or data frame")
+  }
+  
+  # Convert to matrix if data frame
+  if (is.data.frame(X)) {
+    X <- as.matrix(X)
+  }
+  
+  # Check for numeric data
+  if (!is.numeric(X)) {
+    stop("Error: Input X must contain only numeric values")
+  }
+  
+  # Check for missing values
+  if (any(is.na(X))) {
+    stop("Error: Input X contains missing values")
+  }
+  
+  # Get dimensions
+  n <- nrow(X)
+  p <- ncol(X)
+  
+  # Handle edge cases
+  if (n < 2) {
+    stop("Error: Need at least 2 samples/rows")
+  }
+  
+  if (p < 2) {
+    stop("Error: Need at least 2 variables/columns")
+  }
+  
+  # Determine k
+  k <- min(n, p)
+  
+  # Step 1: Center and scale the data
+  # Calculate column means
+  col_means <- colMeans(X)
+  
+  # Center the data
+  X_centered <- sweep(X, 2, col_means, "-")
+  
+  # Calculate standard errors
+  col_se <- apply(X_centered, 2, function(x) sqrt(sum(x^2) / (n-1)))
+  
+  # Scale the data
+  Y <- sweep(X_centered, 2, col_se, "/")
+  
+  # Step 2: Compute SVD of Y
+  svd_result <- svd(Y)
+  d <- svd_result$d[1:k]    # Singular values
+  U <- svd_result$u[, 1:k]  # Left singular vectors
+  V <- svd_result$v[, 1:k]  # Right singular vectors
+  
+  # Step 3a: Check singular values positivity
+  if (any(d <= 0)) {
+    warning("Warning: Non-positive singular values found (numerical issues?)")
+    # Handle small negative values
+    d[d <= 0 & abs(d) < 1e-10] <- 0
+  }
+  
+  # Step 3b: Ensure singular values are in descending order
+  if (!all(diff(d) <= 0)) {
+    idx <- order(d, decreasing = TRUE)
+    d <- d[idx]
+    U <- U[, idx]
+    V <- V[, idx]
+  }
+  
+  # Step 4: Compute output quantities
+  # 4a: Rotation/loading matrix
+  R <- V
+  
+  # 4b: Scores/principal components
+  scores <- Y %*% R
+  
+  # 4c: Standard deviations
+  std_devs <- d / sqrt(n-1)
+  
+  # Return results as a list
+  result <- list(
+    loadings = R,               # p×k matrix
+    scores = scores,            # n×k matrix
+    sdev = std_devs,            # k-vector
+    singular_values = d,        # Original singular values
+    center = col_means,         # Column means used for centering
+    scale = col_se,             # Standard errors used for scaling
+    n.obs = n                   # Number of observations
+  )
+  
+  return(result)
+}
