@@ -1,0 +1,112 @@
+pca_eigen <- function(X) {
+  # Input validation
+  if (!is.matrix(X) && !is.data.frame(X)) {
+    stop("Error: Input X must be a matrix or data frame")
+  }
+  
+  # Convert to matrix if data frame
+  if (is.data.frame(X)) {
+    X <- as.matrix(X)
+  }
+  
+  # Check for numeric data
+  if (!is.numeric(X)) {
+    stop("Error: Input X must contain only numeric values")
+  }
+  
+  # Check for missing values
+  if (any(is.na(X))) {
+    stop("Error: Input X contains missing values")
+  }
+  
+  # Get dimensions
+  n <- nrow(X)
+  p <- ncol(X)
+  
+  # Handle edge cases
+  if (n < 2) {
+    stop("Error: Need at least 2 samples/rows")
+  }
+  
+  if (p < 2) {
+    stop("Error: Need at least 2 variables/columns")
+  }
+  
+  # Determine k
+  k <- min(n, p)
+  
+  # Step 1: Center and scale the data
+  # Calculate column means
+  col_means <- colMeans(X)
+  
+  # Center the data (subtract mean from each column)
+  X_centered <- sweep(X, 2, col_means, "-")
+  
+  # Calculate standard errors for each column
+  col_se <- apply(X_centered, 2, function(x) sqrt(sum(x^2) / (n-1)))
+  
+  # Scale the data (divide by standard error)
+  Y <- sweep(X_centered, 2, col_se, "/")
+  
+  # Step 2: Compute correlation matrix
+  C <- t(Y) %*% Y / (n-1)
+  
+  # Verify correlation matrix properties (for debugging)
+  if (!isSymmetric(C, tol = 1e-10)) {
+    warning("Warning: Correlation matrix is not perfectly symmetric")
+    # Force symmetry
+    C <- (C + t(C))/2
+  }
+  
+  diag_values <- diag(C)
+  if (any(abs(diag_values - 1) > 1e-10)) {
+    warning("Warning: Correlation matrix diagonal elements are not all 1")
+  }
+  
+  if (any(C > 1 + 1e-10) || any(C < -1 - 1e-10)) {
+    warning("Warning: Correlation matrix has values outside [-1, 1]")
+  }
+  
+  # Step 3: Compute eigendecomposition
+  eigen_result <- eigen(C)
+  d <- eigen_result$values
+  V <- eigen_result$vectors
+  
+  # Step 4a: Check eigenvalues positivity
+  if (any(d < 0)) {
+    warning("Warning: Negative eigenvalues found (numerical issues?)")
+    # Handle small negative eigenvalues that might be due to numerical precision
+    d[d < 0 & abs(d) < 1e-10] <- 0
+  }
+  
+  # Step 4b: Ensure eigenvalues are in descending order
+  if (!all(diff(d) <= 0)) {
+    idx <- order(d, decreasing = TRUE)
+    d <- d[idx]
+    V <- V[, idx]
+  }
+  
+  # Step 5: Compute output quantities
+  # 5a: Rotation/loading matrix
+  R <- V[, 1:k, drop = FALSE]
+  
+  # 5b: Scores/principal components
+  scores <- Y %*% R
+  
+  # 5c: Standard deviations
+  std_devs <- sqrt(d[1:k])
+  
+  # Return results as a list
+  result <- list(
+    loadings = R,               # p×k matrix
+    scores = scores,            # n×k matrix
+    sdev = std_devs,            # k-vector
+    eigenvalues = d,            # Original eigenvalues
+    center = col_means,         # Column means used for centering
+    scale = col_se,             # Standard errors used for scaling
+    correlation = C,            # Correlation matrix
+    n.obs = n                   # Number of observations
+  )
+  
+  return(result)
+}
