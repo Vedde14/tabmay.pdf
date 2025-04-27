@@ -1,0 +1,60 @@
+test_pca_svd <- function() {
+  # Test with iris dataset (without species column)
+  data(iris)
+  iris_data <- iris[, 1:4]
+  
+  cat("Testing SVD-based PCA implementation on iris dataset\n")
+  cat("--------------------------------------------------\n")
+  
+  # Run our implementation
+  pca_svd_result <- pca_svd(iris_data)
+  
+  # Run built-in implementation for comparison
+  pca_builtin <- princomp(iris_data, cor = TRUE)
+  
+  # Compare standard deviations
+  cat("\nStandard Deviations:\n")
+  sd_comparison <- data.frame(
+    SVD = pca_svd_result$sdev,
+    Builtin = pca_builtin$sdev,
+    Difference = abs(pca_svd_result$sdev - pca_builtin$sdev)
+  )
+  print(sd_comparison)
+  
+  # Compare proportion of variance explained
+  cat("\nProportion of Variance Explained:\n")
+  var_svd <- pca_svd_result$sdev^2 / sum(pca_svd_result$sdev^2)
+  var_builtin <- pca_builtin$sdev^2 / sum(pca_builtin$sdev^2)
+  var_comparison <- data.frame(
+    SVD = var_svd,
+    Builtin = var_builtin,
+    Difference = abs(var_svd - var_builtin)
+  )
+  print(var_comparison)
+  
+  # Test with synthetic 2-variable dataset
+  cat("\n\nSynthetic Test: X2 = mX1 + c + ε\n")
+  set.seed(42)  # For reproducibility
+  n <- 100
+  X1 <- rnorm(n)
+  noise <- rnorm(n, 0, 0.3)  # ε ~ N(0, 0.3²)
+  m <- 2.5    # slope
+  c <- -1.5   # intercept
+  X2 <- m*X1 + c + noise
+  synthetic_data <- cbind(X1, X2)
+  
+  pca_svd_synthetic <- pca_svd(synthetic_data)
+  
+  cat("\nLoadings for synthetic data:\n")
+  print(pca_svd_synthetic$loadings)
+  
+  cat("\nVariance explained by components:\n")
+  var_explained <- pca_svd_synthetic$sdev^2 / sum(pca_svd_synthetic$sdev^2)
+  print(var_explained)
+  
+  # First PC should explain most of the variance
+  cat("\nFirst PC should explain most variance (", 
+      round(var_explained[1]*100, 2), "% explained)\n", sep="")
+  
+  return(pca_svd_result)
+}
